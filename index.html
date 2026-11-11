@@ -11,6 +11,12 @@
   <h1>Church Hub</h1>
   <p class="tagline">Teams, events, worship, small groups &amp; volunteering — in one place.</p>
   <p class="status"><span id="status-dot" class="dot off"></span> <span id="status-text">Connecting…</span></p>
+  <div class="auth-box">
+    <span id="auth-text">Not signed in — anyone can view, and anyone can sign up to volunteer.</span>
+    <button id="btn-signin" type="button">Sign in with Google</button>
+    <button id="btn-signout" type="button" class="hidden">Sign out</button>
+  </div>
+  <p class="editor-note">Only signed-in editors can add, change or remove things. Sign in above if you're an editor.</p>
 </header>
 
 <nav id="tabs">
@@ -48,7 +54,7 @@
   <!-- PEOPLE -->
   <section id="tab-people" class="tab">
     <h2>People <span class="count" id="count-people"></span></h2>
-    <form id="form-person" class="add-form">
+    <form id="form-person" class="add-form admin-only">
       <input name="name" placeholder="Full name" required>
       <input name="phone" placeholder="Phone" type="tel">
       <input name="email" placeholder="Email" type="email">
@@ -57,12 +63,22 @@
       <button type="submit">Add person</button>
     </form>
     <ul id="list-people" class="list"></ul>
+
+    <div class="card admin-only" id="editors-card">
+      <h3>Editors</h3>
+      <p class="muted">Only these signed-in people can add, change or remove things. Anyone can still sign up to volunteer without signing in.</p>
+      <ul id="list-editors" class="list"></ul>
+      <form id="form-editor" class="add-form">
+        <input name="email" type="email" placeholder="Editor's Google email" required>
+        <button type="submit">Add editor</button>
+      </form>
+    </div>
   </section>
 
   <!-- TEAMS -->
   <section id="tab-teams" class="tab">
     <h2>Teams <span class="count" id="count-teams"></span></h2>
-    <form id="form-team" class="add-form">
+    <form id="form-team" class="add-form admin-only">
       <input name="name" placeholder="Team name" required>
       <input name="leader" placeholder="Leader">
       <input name="area" placeholder="Area (e.g. Media, Worship, Welcome)">
@@ -75,7 +91,7 @@
   <!-- EVENTS -->
   <section id="tab-events" class="tab">
     <h2>Events <span class="count" id="count-events"></span></h2>
-    <form id="form-event" class="add-form">
+    <form id="form-event" class="add-form admin-only">
       <input name="title" placeholder="Event name" required>
       <input name="date" type="date" required>
       <input name="time" type="time">
@@ -89,7 +105,7 @@
   <!-- WORSHIP -->
   <section id="tab-worship" class="tab">
     <h2>Worship <span class="count" id="count-worship"></span></h2>
-    <form id="form-worship" class="add-form">
+    <form id="form-worship" class="add-form admin-only">
       <input name="date" type="date" required>
       <input name="service" placeholder="Service (e.g. Sunday Service)" required>
       <input name="leader" placeholder="Worship leader">
@@ -103,7 +119,7 @@
   <!-- GROUPS -->
   <section id="tab-groups" class="tab">
     <h2>Small Groups <span class="count" id="count-groups"></span></h2>
-    <form id="form-group" class="add-form">
+    <form id="form-group" class="add-form admin-only">
       <input name="name" placeholder="Group name" required>
       <input name="leader" placeholder="Leader">
       <input name="meeting" placeholder="Meeting day / time">
@@ -118,7 +134,7 @@
   <section id="tab-volunteer" class="tab">
     <h2>Volunteer <span class="count" id="count-needs"></span></h2>
     <h3>Post a need</h3>
-    <form id="form-need" class="add-form">
+    <form id="form-need" class="add-form admin-only">
       <input name="title" placeholder="What is needed? (e.g. Sound tech)" required>
       <input name="event" placeholder="Event / date">
       <input name="spots" type="number" min="1" placeholder="Spots needed" required>
@@ -146,6 +162,7 @@
 </footer>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="js/app.js"></script>
 </body>
