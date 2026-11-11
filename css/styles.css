@@ -142,7 +142,7 @@ h3 { font-size: 1.15rem; margin: 1.5rem 0 0.5rem; }
 .edit-btn:hover { text-decoration: underline; }
 body:not(.is-editor) .edit-btn { display: none; }
 .edit-form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.edit-form input, .edit-form select {
+.edit-form input, .edit-form select, .edit-form textarea {
   flex: 1 1 140px;
   padding: 0.5rem;
   border: 1px solid #d8cdb8;
@@ -150,6 +150,7 @@ body:not(.is-editor) .edit-btn { display: none; }
   font-size: 0.95rem;
   font-family: Arial, sans-serif;
 }
+.edit-form textarea { flex-basis: 100%; }
 .edit-form button {
   padding: 0.5rem 1rem;
   border: none;
