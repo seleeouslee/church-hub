@@ -20,7 +20,7 @@ let currentUser = null;
 let isEditor = false;
 let editors = [];
 let adminsUnsub = null;
-let editing = null; // { coll: "people"|"teams", id } while an inline edit form is open
+let editing = null; // { coll: "people"|"teams"|"worshipPlans", id } while an inline edit form is open
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -216,7 +216,7 @@ $("form-signup").addEventListener("submit", (e) => {
   }).catch((err) => showError("Could not sign up: " + err.message));
 });
 
-// ---- Inline editing for people + teams (editors only) ----
+// ---- Inline editing for people, teams + worship plans (editors only) ----
 const EDIT_FIELDS = {
   people: [
     { name: "name", type: "text", placeholder: "Full name", required: true },
@@ -230,12 +230,19 @@ const EDIT_FIELDS = {
     { name: "leader", type: "text", placeholder: "Leader" },
     { name: "area", type: "text", placeholder: "Area" },
     { name: "members", type: "text", placeholder: "Members (comma-separated)" }
+  ],
+  worshipPlans: [
+    { name: "date", type: "date", placeholder: "", required: true },
+    { name: "service", type: "text", placeholder: "Service (e.g. Sunday Service)", required: true },
+    { name: "leader", type: "text", placeholder: "Worship leader" },
+    { name: "team", type: "text", placeholder: "Team on duty" },
+    { name: "songs", type: "textarea", placeholder: "Songs — one per line: Title – Artist – Key" }
   ]
 };
 function editFormHTML(coll, item) {
   const inputs = EDIT_FIELDS[coll].map((f) => {
     if (f.name === "team") {
-      // Team picker: existing teams, plus the person's current team if it is gone
+      // Team picker: existing teams, plus the item's current team if it is gone
       const current = item.team || "";
       const options = ['<option value="">No team</option>']
         .concat(data.teams.map((t) => `<option value="${esc(t.name)}"${t.name === current ? " selected" : ""}>${esc(t.name)}</option>`));
@@ -243,6 +250,10 @@ function editFormHTML(coll, item) {
         options.push(`<option value="${esc(current)}" selected>${esc(current)}</option>`);
       }
       return `<select name="team">${options.join("")}</select>`;
+    }
+    if (f.type === "textarea") {
+      return `
+    <textarea name="${f.name}" rows="4" placeholder="${f.placeholder}">${esc(item[f.name] || "")}</textarea>`;
     }
     return `
     <input name="${f.name}" type="${f.type}" placeholder="${f.placeholder}" value="${esc(item[f.name] || "")}"${f.required ? " required" : ""}>`;
@@ -338,10 +349,12 @@ function renderAll() {
   const plans = [...data.worshipPlans].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   $("count-worship").textContent = data.worshipPlans.length ? "(" + data.worshipPlans.length + ")" : "";
   $("list-worship").innerHTML = plans.map((p) => {
+    if (editing && editing.coll === "worshipPlans" && editing.id === p.id) return editFormHTML("worshipPlans", p);
     const songs = (p.songs || "").split("\n").map((s) => s.trim()).filter(Boolean);
     return `
     <li>
       <button class="remove" data-delete="worshipPlans" data-id="${p.id}">Remove</button>
+      <button class="edit-btn" data-edit="worshipPlans" data-id="${p.id}">Edit</button>
       <div class="title">${esc(p.service || "Service")} — ${esc(fmtDate(p.date))}</div>
       <div class="detail">${[p.leader ? "Led by " + p.leader : "", p.team ? "Team: " + p.team : ""].filter(Boolean).map(esc).join(" · ")}</div>
       ${songs.length ? `<ol class="songs">${songs.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
