@@ -129,6 +129,37 @@ h3 { font-size: 1.15rem; margin: 1.5rem 0 0.5rem; }
   font-family: Arial, sans-serif;
 }
 .remove:hover { text-decoration: underline; }
+.edit-btn {
+  float: right;
+  border: none;
+  background: none;
+  color: #3d2c1e;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: Arial, sans-serif;
+  margin-left: 0.4rem;
+}
+.edit-btn:hover { text-decoration: underline; }
+body:not(.is-editor) .edit-btn { display: none; }
+.edit-form { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.edit-form input {
+  flex: 1 1 140px;
+  padding: 0.5rem;
+  border: 1px solid #d8cdb8;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: Arial, sans-serif;
+}
+.edit-form button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #3d2c1e;
+  color: #f5ead9;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.edit-form button[data-cancel-edit] { background: #8a7a68; }
 
 #error-banner {
   background: #fdecea;
