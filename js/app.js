@@ -15,6 +15,11 @@ const firebaseConfig = {
 const COLLECTIONS = ["people", "teams", "events", "worshipPlans", "smallGroups", "volunteerNeeds", "volunteerSignups"];
 const data = { people: [], teams: [], events: [], worshipPlans: [], smallGroups: [], volunteerNeeds: [], volunteerSignups: [] };
 let db = null;
+let auth = null;
+let currentUser = null;
+let isEditor = false;
+let editors = [];
+let adminsUnsub = null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -35,6 +40,34 @@ function showError(msg) {
   b.classList.remove("hidden");
 }
 
+// ---- Sign-in (Google) + editor check ----
+// Editors are the docs in the "admins" collection (doc id = editor's email).
+// Everyone can view; only editors can add/change/remove items.
+// Volunteering signup stays open to everyone, signed in or not.
+function updateAuthUI() {
+  if (currentUser) {
+    $("auth-text").textContent = "Signed in as " + currentUser.email + (isEditor ? " (editor)" : " — not an editor");
+    $("btn-signin").classList.add("hidden");
+    $("btn-signout").classList.remove("hidden");
+  } else {
+    $("auth-text").textContent = "Not signed in — anyone can view, and anyone can sign up to volunteer.";
+    $("btn-signin").classList.remove("hidden");
+    $("btn-signout").classList.add("hidden");
+  }
+}
+function setEditor(v) {
+  isEditor = v;
+  document.body.classList.toggle("is-editor", v);
+  updateAuthUI();
+}
+function renderEditors() {
+  $("list-editors").innerHTML = editors.map((email) => `
+    <li>
+      <button class="remove" data-delete="admins" data-id="${esc(email)}">Remove</button>
+      <div class="title">${esc(email)}</div>
+    </li>`).join("") || '<li class="muted">No editors yet.</li>';
+}
+
 // ---- Tabs ----
 document.querySelectorAll("#tabs button").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -51,6 +84,33 @@ try {
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   setStatus("on", "Connected — shared live");
+
+  auth = firebase.auth();
+  $("btn-signin").addEventListener("click", () => {
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch((err) => showError("Sign-in failed: " + err.message));
+  });
+  $("btn-signout").addEventListener("click", () => auth.signOut());
+  auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    updateAuthUI();
+    if (adminsUnsub) { adminsUnsub(); adminsUnsub = null; }
+    if (user) {
+      db.collection("admins").doc(user.email).get()
+        .then((snap) => {
+          setEditor(snap.exists);
+          if (snap.exists) {
+            adminsUnsub = db.collection("admins").onSnapshot((s) => {
+              editors = s.docs.map((d) => d.id);
+              renderEditors();
+            }, () => {});
+          }
+        })
+        .catch(() => setEditor(false));
+    } else {
+      setEditor(false);
+    }
+  });
 } catch (e) {
   setStatus("err", "Not connected");
   showError("Could not connect to the shared database: " + e.message);
@@ -69,10 +129,11 @@ if (db) {
   });
 }
 
-// ---- Delete (event delegation) ----
+// ---- Delete (event delegation) — editors only ----
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-delete]");
   if (!btn || !db) return;
+  if (!isEditor) { showError("Only signed-in editors can remove items."); return; }
   if (!confirm("Delete this?")) return;
   db.collection(btn.dataset.delete).doc(btn.dataset.id).delete()
     .catch((err) => showError("Could not delete: " + err.message));
@@ -85,6 +146,7 @@ function handleForm(formId, coll, fields) {
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     if (!db) { showError("Not connected to the database yet."); return; }
+    if (!isEditor) { showError("Only signed-in editors can add items."); return; }
     const doc = { createdAt: firebase.firestore.FieldValue.serverTimestamp() };
     fields.forEach((f) => {
       const el = form.elements[f];
@@ -102,6 +164,18 @@ handleForm("form-event", "events", ["title", "date", "time", "location", "team"]
 handleForm("form-worship", "worshipPlans", ["date", "service", "leader", "team", "songs"]);
 handleForm("form-group", "smallGroups", ["name", "leader", "meeting", "location", "members"]);
 handleForm("form-need", "volunteerNeeds", ["title", "event", "spots", "contact"]);
+
+// Add an editor (editors only; doc id is the editor's Google email)
+$("form-editor").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!db) { showError("Not connected to the database yet."); return; }
+  if (!isEditor) { showError("Only signed-in editors can add editors."); return; }
+  const email = e.target.elements["email"].value.trim().toLowerCase();
+  if (!email) return;
+  db.collection("admins").doc(email).set({ email })
+    .then(() => e.target.reset())
+    .catch((err) => showError("Could not add editor: " + err.message));
+});
 
 // Volunteer signup: also records which need it is for
 $("form-signup").addEventListener("submit", (e) => {
