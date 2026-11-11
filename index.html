@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Church Hub</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header>
+  <h1>Church Hub</h1>
+  <p class="tagline">Teams, events, worship, small groups &amp; volunteering — in one place.</p>
+  <p class="status"><span id="status-dot" class="dot off"></span> <span id="status-text">Connecting…</span></p>
+</header>
+
+<nav id="tabs">
+  <button data-tab="week" class="active">This Week</button>
+  <button data-tab="people">People</button>
+  <button data-tab="teams">Teams</button>
+  <button data-tab="events">Events</button>
+  <button data-tab="worship">Worship</button>
+  <button data-tab="groups">Groups</button>
+  <button data-tab="volunteer">Volunteer</button>
+</nav>
+
+<main>
+  <div id="error-banner" class="hidden"></div>
+
+  <!-- THIS WEEK -->
+  <section id="tab-week" class="tab active">
+    <h2>This Week</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Next worship service</h3>
+        <div id="next-service"><p class="muted">No service planned yet — add one under Worship.</p></div>
+      </div>
+      <div class="card">
+        <h3>Upcoming events</h3>
+        <div id="upcoming-events"><p class="muted">No upcoming events — add one under Events.</p></div>
+      </div>
+      <div class="card">
+        <h3>Volunteer spots still open</h3>
+        <div id="open-needs"><p class="muted">No open needs — post one under Volunteer.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PEOPLE -->
+  <section id="tab-people" class="tab">
+    <h2>People <span class="count" id="count-people"></span></h2>
+    <form id="form-person" class="add-form">
+      <input name="name" placeholder="Full name" required>
+      <input name="phone" placeholder="Phone" type="tel">
+      <input name="email" placeholder="Email" type="email">
+      <input name="team" placeholder="Team">
+      <input name="role" placeholder="Role">
+      <button type="submit">Add person</button>
+    </form>
+    <ul id="list-people" class="list"></ul>
+  </section>
+
+  <!-- TEAMS -->
+  <section id="tab-teams" class="tab">
+    <h2>Teams <span class="count" id="count-teams"></span></h2>
+    <form id="form-team" class="add-form">
+      <input name="name" placeholder="Team name" required>
+      <input name="leader" placeholder="Leader">
+      <input name="area" placeholder="Area (e.g. Media, Worship, Welcome)">
+      <input name="members" placeholder="Members (comma-separated)">
+      <button type="submit">Add team</button>
+    </form>
+    <ul id="list-teams" class="list"></ul>
+  </section>
+
+  <!-- EVENTS -->
+  <section id="tab-events" class="tab">
+    <h2>Events <span class="count" id="count-events"></span></h2>
+    <form id="form-event" class="add-form">
+      <input name="title" placeholder="Event name" required>
+      <input name="date" type="date" required>
+      <input name="time" type="time">
+      <input name="location" placeholder="Location">
+      <input name="team" placeholder="Team in charge">
+      <button type="submit">Add event</button>
+    </form>
+    <ul id="list-events" class="list"></ul>
+  </section>
+
+  <!-- WORSHIP -->
+  <section id="tab-worship" class="tab">
+    <h2>Worship <span class="count" id="count-worship"></span></h2>
+    <form id="form-worship" class="add-form">
+      <input name="date" type="date" required>
+      <input name="service" placeholder="Service (e.g. Sunday Service)" required>
+      <input name="leader" placeholder="Worship leader">
+      <input name="team" placeholder="Team on duty">
+      <textarea name="songs" rows="4" placeholder="Songs — one per line: Title – Artist – Key"></textarea>
+      <button type="submit">Add service plan</button>
+    </form>
+    <ul id="list-worship" class="list"></ul>
+  </section>
+
+  <!-- GROUPS -->
+  <section id="tab-groups" class="tab">
+    <h2>Small Groups <span class="count" id="count-groups"></span></h2>
+    <form id="form-group" class="add-form">
+      <input name="name" placeholder="Group name" required>
+      <input name="leader" placeholder="Leader">
+      <input name="meeting" placeholder="Meeting day / time">
+      <input name="location" placeholder="Location">
+      <input name="members" placeholder="Members (comma-separated)">
+      <button type="submit">Add group</button>
+    </form>
+    <ul id="list-groups" class="list"></ul>
+  </section>
+
+  <!-- VOLUNTEER -->
+  <section id="tab-volunteer" class="tab">
+    <h2>Volunteer <span class="count" id="count-needs"></span></h2>
+    <h3>Post a need</h3>
+    <form id="form-need" class="add-form">
+      <input name="title" placeholder="What is needed? (e.g. Sound tech)" required>
+      <input name="event" placeholder="Event / date">
+      <input name="spots" type="number" min="1" placeholder="Spots needed" required>
+      <input name="contact" placeholder="Contact person">
+      <button type="submit">Post need</button>
+    </form>
+    <ul id="list-needs" class="list"></ul>
+
+    <h3>Sign up to serve</h3>
+    <form id="form-signup" class="add-form">
+      <input name="name" placeholder="Your name" required>
+      <input name="email" placeholder="Email" type="email">
+      <input name="phone" placeholder="Phone" type="tel">
+      <select name="needId" id="signup-need" required></select>
+      <input name="availability" placeholder="Availability (e.g. Sunday mornings)">
+      <button type="submit">Sign up</button>
+    </form>
+    <h3>Signups</h3>
+    <ul id="list-signups" class="list"></ul>
+  </section>
+</main>
+
+<footer>
+  <p class="muted">Church Hub — shared with the whole team through Firebase (free Spark plan).</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
