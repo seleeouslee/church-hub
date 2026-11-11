@@ -20,6 +20,7 @@ let currentUser = null;
 let isEditor = false;
 let editors = [];
 let adminsUnsub = null;
+let editing = null; // { coll: "people"|"teams", id } while an inline edit form is open
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -196,6 +197,58 @@ $("form-signup").addEventListener("submit", (e) => {
     .catch((err) => showError("Could not sign up: " + err.message));
 });
 
+// ---- Inline editing for people + teams (editors only) ----
+const EDIT_FIELDS = {
+  people: [
+    { name: "name", type: "text", placeholder: "Full name", required: true },
+    { name: "phone", type: "tel", placeholder: "Phone" },
+    { name: "email", type: "email", placeholder: "Email" },
+    { name: "team", type: "text", placeholder: "Team" },
+    { name: "role", type: "text", placeholder: "Role" }
+  ],
+  teams: [
+    { name: "name", type: "text", placeholder: "Team name", required: true },
+    { name: "leader", type: "text", placeholder: "Leader" },
+    { name: "area", type: "text", placeholder: "Area" },
+    { name: "members", type: "text", placeholder: "Members (comma-separated)" }
+  ]
+};
+function editFormHTML(coll, item) {
+  const inputs = EDIT_FIELDS[coll].map((f) => `
+    <input name="${f.name}" type="${f.type}" placeholder="${f.placeholder}" value="${esc(item[f.name] || "")}"${f.required ? " required" : ""}>`).join("");
+  return `<li><form data-edit-form="${coll}" data-id="${item.id}" class="edit-form">${inputs}<button type="submit">Save</button><button type="button" data-cancel-edit>Cancel</button></form></li>`;
+}
+
+// Start / cancel an inline edit
+document.addEventListener("click", (e) => {
+  const cancel = e.target.closest("[data-cancel-edit]");
+  if (cancel) { editing = null; renderAll(); return; }
+  const btn = e.target.closest("[data-edit]");
+  if (!btn) return;
+  if (!isEditor) { showError("Only signed-in editors can edit items."); return; }
+  editing = { coll: btn.dataset.edit, id: btn.dataset.id };
+  renderAll();
+});
+
+// Save an inline edit
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("[data-edit-form]");
+  if (!form) return;
+  e.preventDefault();
+  if (!db) { showError("Not connected to the database yet."); return; }
+  if (!isEditor) { showError("Only signed-in editors can edit items."); return; }
+  const coll = form.dataset.editForm;
+  const id = form.dataset.id;
+  const doc = {};
+  EDIT_FIELDS[coll].forEach((f) => {
+    const el = form.elements[f.name];
+    if (el) doc[f.name] = el.value.trim();
+  });
+  db.collection(coll).doc(id).update(doc)
+    .then(() => { editing = null; renderAll(); })
+    .catch((err) => showError("Could not save: " + err.message));
+});
+
 // ---- Rendering ----
 function filledCount(needId) {
   return data.volunteerSignups.filter((s) => s.needId === needId).length;
@@ -204,23 +257,31 @@ function filledCount(needId) {
 function renderAll() {
   // People
   $("count-people").textContent = data.people.length ? "(" + data.people.length + ")" : "";
-  $("list-people").innerHTML = data.people.map((p) => `
+  $("list-people").innerHTML = data.people.map((p) => {
+    if (editing && editing.coll === "people" && editing.id === p.id) return editFormHTML("people", p);
+    return `
     <li>
       <button class="remove" data-delete="people" data-id="${p.id}">Remove</button>
+      <button class="edit-btn" data-edit="people" data-id="${p.id}">Edit</button>
       <div class="title">${esc(p.name)}</div>
       <div class="detail">${[p.role, p.team].filter(Boolean).map(esc).join(" · ")}</div>
       <div class="detail">${[p.phone, p.email].filter(Boolean).map(esc).join(" · ")}</div>
-    </li>`).join("") || '<li class="muted">No people yet — add the first one above.</li>';
+    </li>`;
+  }).join("") || '<li class="muted">No people yet — add the first one above.</li>';
 
   // Teams
   $("count-teams").textContent = data.teams.length ? "(" + data.teams.length + ")" : "";
-  $("list-teams").innerHTML = data.teams.map((t) => `
+  $("list-teams").innerHTML = data.teams.map((t) => {
+    if (editing && editing.coll === "teams" && editing.id === t.id) return editFormHTML("teams", t);
+    return `
     <li>
       <button class="remove" data-delete="teams" data-id="${t.id}">Remove</button>
+      <button class="edit-btn" data-edit="teams" data-id="${t.id}">Edit</button>
       <div class="title">${esc(t.name)}</div>
       <div class="detail">${[t.leader ? "Led by " + t.leader : "", t.area].filter(Boolean).map(esc).join(" · ")}</div>
       ${t.members ? `<div class="detail">Members: ${esc(t.members)}</div>` : ""}
-    </li>`).join("") || '<li class="muted">No teams yet.</li>';
+    </li>`;
+  }).join("") || '<li class="muted">No teams yet.</li>';
 
   // Events (soonest first)
   const events = [...data.events].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
