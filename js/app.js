@@ -178,23 +178,42 @@ $("form-editor").addEventListener("submit", (e) => {
     .catch((err) => showError("Could not add editor: " + err.message));
 });
 
-// Volunteer signup: also records which need it is for
+// Volunteer signup: records which need it is for, and adds the volunteer
+// to People (once — skipped if the name or email is already listed).
 $("form-signup").addEventListener("submit", (e) => {
   e.preventDefault();
   if (!db) { showError("Not connected to the database yet."); return; }
   const form = e.target;
   const needId = form.elements["needId"].value;
   const need = data.volunteerNeeds.find((n) => n.id === needId);
+  const name = form.elements["name"].value.trim();
+  const email = form.elements["email"].value.trim();
+  const phone = form.elements["phone"].value.trim();
   db.collection("volunteerSignups").add({
-    name: form.elements["name"].value.trim(),
-    email: form.elements["email"].value.trim(),
-    phone: form.elements["phone"].value.trim(),
+    name,
+    email,
+    phone,
     needId,
     needTitle: need ? need.title : "",
     availability: form.elements["availability"].value.trim(),
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(() => form.reset())
-    .catch((err) => showError("Could not sign up: " + err.message));
+  }).then(() => {
+    form.reset();
+    const alreadyListed = data.people.some((p) => {
+      if (email && p.email && p.email.trim().toLowerCase() === email.toLowerCase()) return true;
+      return p.name && p.name.trim().toLowerCase() === name.toLowerCase();
+    });
+    if (!alreadyListed && name) {
+      db.collection("people").add({
+        name,
+        email,
+        phone,
+        team: "",
+        role: "Volunteer",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch((err) => showError("Signed up, but could not add to People: " + err.message));
+    }
+  }).catch((err) => showError("Could not sign up: " + err.message));
 });
 
 // ---- Inline editing for people + teams (editors only) ----
@@ -214,8 +233,20 @@ const EDIT_FIELDS = {
   ]
 };
 function editFormHTML(coll, item) {
-  const inputs = EDIT_FIELDS[coll].map((f) => `
-    <input name="${f.name}" type="${f.type}" placeholder="${f.placeholder}" value="${esc(item[f.name] || "")}"${f.required ? " required" : ""}>`).join("");
+  const inputs = EDIT_FIELDS[coll].map((f) => {
+    if (f.name === "team") {
+      // Team picker: existing teams, plus the person's current team if it is gone
+      const current = item.team || "";
+      const options = ['<option value="">No team</option>']
+        .concat(data.teams.map((t) => `<option value="${esc(t.name)}"${t.name === current ? " selected" : ""}>${esc(t.name)}</option>`));
+      if (current && !data.teams.some((t) => t.name === current)) {
+        options.push(`<option value="${esc(current)}" selected>${esc(current)}</option>`);
+      }
+      return `<select name="team">${options.join("")}</select>`;
+    }
+    return `
+    <input name="${f.name}" type="${f.type}" placeholder="${f.placeholder}" value="${esc(item[f.name] || "")}"${f.required ? " required" : ""}>`;
+  }).join("");
   return `<li><form data-edit-form="${coll}" data-id="${item.id}" class="edit-form">${inputs}<button type="submit">Save</button><button type="button" data-cancel-edit>Cancel</button></form></li>`;
 }
 
@@ -255,6 +286,15 @@ function filledCount(needId) {
 }
 
 function renderAll() {
+  // Team picker when adding a person (teams created on the Teams tab)
+  const teamSelect = $("person-team");
+  if (teamSelect) {
+    const prevTeam = teamSelect.value;
+    teamSelect.innerHTML = '<option value="">No team</option>' +
+      data.teams.map((t) => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join("");
+    if ([...teamSelect.options].some((o) => o.value === prevTeam)) teamSelect.value = prevTeam;
+  }
+
   // People
   $("count-people").textContent = data.people.length ? "(" + data.people.length + ")" : "";
   $("list-people").innerHTML = data.people.map((p) => {
